@@ -1,0 +1,13 @@
+#!/usr/bin/env perl
+# Copyright (c) 2014, Aleksandr Derbenev <ya.alex-ac@yandex.com>
+# This file is distributed under BSD License that can be found in the
+# License.md file.
+
+use strict;
+use warnings;
+use v5.10;
+
+use SortIncludes;
+
+SortIncludes::main;
+
