@@ -1,0 +1,4 @@
+#!/bin/sh
+
+current-branch | sed -E 's%.*/(.*)/.*%\1%'
+

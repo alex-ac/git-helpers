@@ -1,6 +1,6 @@
 # Git-helpers
 
-Some perl scripts for workflow enchancement.
+Some perl and shell scripts for workflow enchancement.
 
 # Instalation
 
@@ -11,6 +11,8 @@ Some perl scripts for workflow enchancement.
 
  * sort-includes - sort #include and #import blocks of lines in the C, C++,
    Objective-C, Objective-C++ source files.
+ * current-branch - print current git branch.
+ * current-task - print current task from branch name.
 
 # License
 
