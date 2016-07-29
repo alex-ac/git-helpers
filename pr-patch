@@ -1,0 +1,4 @@
+#!/bin/sh
+
+git fetch origin pull-requests/$1/merge:pull-requests/$1/merge
+git diff pull-requests/$1/merge^..pull-requests/$1/merge

@@ -13,6 +13,7 @@ Some perl and shell scripts for workflow enchancement.
    Objective-C, Objective-C++ source files.
  * current-branch - print current git branch.
  * current-task - print current task from branch name.
+ * pr-patch - print bitbucket-datacenter pull-request patch.
 
 # License
 
