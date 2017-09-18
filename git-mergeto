@@ -1,0 +1,103 @@
+#!/bin/sh
+
+set -e
+
+# Just print usage.
+usage() {
+  cat << EOF
+Usage: git mergeto <git-merge options>
+
+Acts like git merge (and calls it internally) but instead of merging revisions
+to current branch merges current branch (and rest of specified revisions) to
+the first specified revision. Resulting commit will be placed to the current
+branch.
+
+Actually it's all about reversing order of two first parents of merge-commit.
+EOF
+}
+
+# Utility Lisp-like functions.
+# Echoes first argument.
+car() {
+  echo "$1"
+}
+
+# Skips first arguments and echoes rest.
+cdr() {
+  shift
+  echo "$@"
+}
+
+# Arguments
+# options that will be passed to git merge.
+git_merge_options=
+# Revisions to merge.
+revisions=
+# Show help.
+help=0
+
+arg=0
+while [ -n "$1" ]; do
+  if [ "$arg" != "0" ]; then
+    # Previous arg is git-merge argument with parameter.
+    # Just save it to passed options.
+    git_merge_options+=" $1"
+    arg=0
+  else
+    case "$1" in
+    -s|-X|-m|-c)
+      # These git-merge arguments has parameters.
+      arg=1
+      git_merge_options+=" $1"
+      ;;
+    -h|--help)
+      # Will show help message.
+      help=1
+      ;;
+    -*)
+      # Assume that this argument is for git merge.
+      git_merge_options+=" $1"
+      ;;
+    *)
+      # This argument is git-revision. Save it.
+      revisions+=" $1"
+      ;;
+    esac
+  fi
+  shift
+done
+
+if [ "$help" != "0" ]; then
+  usage
+  exit 0
+fi
+
+if [ -z "$revisions" ]; then
+  echo "There are no revisions to merge specified." >&2
+  usage >&2
+  exit 2
+fi
+
+# Determine and remember current commit and branch
+current_revision=`git rev-parse HEAD`
+current_head=`git rev-parse --abbrev-ref HEAD || true`
+if [ "$current_head" == "$current_revision" ]; then
+  # Looks like we're in detached-HEAD state.
+  current_head=
+fi
+
+# Split received list of revisions to first and rest.
+first_revision=`car $revisions`
+revisions=`cdr $revisions`
+
+# Checkout first merged revision in detached-HEAD state.
+first_revision_sha1=`git rev-parse $first_revision`
+git checkout "$first_revision_sha1"
+
+# If we have started with branch, reset it with current revision.
+if [ -n "$current_head" ]; then
+  git checkout -B "$current_head"
+fi
+
+# Pass all to git merge. Options, our revision and rest of revisions.
+exec git merge $git_merge_options "$current_revision" $revisions
