@@ -81,7 +81,7 @@ fi
 # Determine and remember current commit and branch
 current_revision=`git rev-parse HEAD`
 current_head=`git rev-parse --abbrev-ref HEAD || true`
-if [ "$current_head" == "$current_revision" ]; then
+if [ "$current_head" == "HEAD" ]; then
   # Looks like we're in detached-HEAD state.
   current_head=
 fi
