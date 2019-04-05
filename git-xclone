@@ -1,0 +1,155 @@
+#!/usr/bin/env bash
+
+set -e
+
+SCRIPT_NAME=$0
+
+init_repo() {
+  local mirror target branch full
+  mirror=$1
+  target=$2
+  branch=$3
+  full=$4
+
+  mkdir -p "$target"
+  mkdir -p "$target/hooks"
+  chmod 555 "$target/hooks"
+  mkdir -p "$target/info"
+  echo "ref: refs/heads/$branch" > "$target/HEAD"
+  echo "# Set up spase checkout here:" > "$target/info/sparse-checkout"
+  if $full; then
+    echo "*" > "$target/info/sparse-checkout"
+  else
+    nvim "$target/info/sparse-checkout"
+  fi
+
+  if ! [ -e "$mirror/shared_config" ]; then
+    cat << EOF > "$mirror/shared_config"
+[core]
+	repositoryformatversion = 0
+	bare = false
+	precomposeunicode = true
+	sparsecheckout = true
+	logAllRefUpdates = false
+[protocol]
+  version = 2
+EOF
+  fi
+
+  ln -sf \
+    "$mirror/objects" \
+    "$mirror/refs" \
+    "$mirror/packed-refs" \
+    "$mirror/shared_config" \
+    "$mirror/description" \
+    "$mirror/FETCH_HEAD" \
+    "$mirror/branches" \
+    "$target"
+  mv "$target/shared_config" "$target/config"
+}
+
+do_convert() {
+  local mirror target branch full
+  mirror=$1
+  target=$2
+  branch=$3
+  full=$4
+
+  local ref
+  ref=$(cd "$target" && git rev-parse HEAD)
+
+  rm -rf "$target/.git"
+  init_repo "$mirror" "$target/.git" "$branch" "$full"
+  # Change to detached head saved earlier.
+  echo "$ref" > "$target/.git/HEAD"
+  (
+    set -e
+    cd "$target"
+    git checkout -f "$branch"
+  )
+}
+
+do_clone() {
+  local mirror target branch full
+  mirror=$1
+  target=$2
+  branch=$3
+  full=$4
+
+  init_repo "$mirror" "$target/.git" "$branch" "$full"
+  (
+    set -e
+    cd "$target"
+    git checkout -f "$branch"
+  )
+}
+
+usage() {
+  cat << EOF
+Usage: $SCRIPT_NAME MIRROR DIR [-h] [-b BRANCH] [-f] [-c]
+Create new browser repository clone.
+
+Options:
+  MIRROR    - Bare repository to clone.
+  DIR       - Where to place new checkout.
+  -b BRANCH - Checkout specific branch (master by default).
+  -f        - Do not use sparse checkout.
+  -h        - Print this help message and exit.
+  -c        - Convert from git repository to tricky clone.
+EOF
+}
+
+target=
+branch=master
+full=false
+convert=false
+while [ -n "$1" ]; do
+  case $1 in
+  -b)
+    branch=$2
+    shift
+  ;;
+  -f)
+    full=true
+  ;;
+  -h)
+    usage
+    exit 0
+  ;;
+  -c)
+    convert=true
+  ;;
+  *)
+    if [ -z "$mirror" ]; then
+      mirror=$1
+    elif [ -z "$target" ]; then
+      target=$1
+    else
+      "Unknown argument: $1" >&2
+      usage
+      exit 2
+    fi
+  ;;
+  esac
+  shift
+done
+
+if [ -z "$mirror" ]; then
+  echo "MIRROR argument is required!" >&2
+  usage
+  exit 2
+fi
+
+mirror=$(cd "$mirror" && pwd)
+
+if [ -z "$target" ]; then
+  echo "DIR argument is required!" >&2
+  usage
+  exit 2
+fi
+
+if $convert; then
+  do_convert "$mirror" "$target" "$branch" "$full"
+else
+  do_clone "$mirror" "$target" "$branch" "$full"
+fi
